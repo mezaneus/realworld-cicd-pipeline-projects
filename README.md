@@ -56,7 +56,7 @@
     - Number: `3`
     - Instance type: e2-medium
     - Firewall Rules (Open): 8080, 9100, 9997 and 22 to 0.0.0.0/0
-    - User Script (Copy the following user data): https://github.com/awanmbandi/realworld-cicd-pipeline-project/blob/tomcat-splunk-installation/tomcat-ssh-configure.sh
+    - User Script (Copy the following user data): https://github.com/awanmbandi/gcp-realworld-cicd-pipeline-project/blob/maven-nexus-sonarqube-jenkins-install/archive/ansible/configure-ansible-client-install-tomcat.sh
     - Launch Instance
 
 #### NOTE: Confirm and make sure you have a total of 8 VM instances
@@ -370,17 +370,91 @@ A) Update Maven `POM.xml` file
 #!/bin/bash
 # Tomcat Server Installation
 sudo su
-amazon-linux-extras install tomcat8.5 -y
-systemctl enable tomcat
-systemctl start tomcat
-
-# Provisioning Ansible Deployer Access
-useradd ansibleadmin
-echo ansibleadmin | passwd ansibleadmin --stdin
-sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
-systemctl restart sshd
-echo "ansibleadmin ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+..........continue
 ```
+
+### A) Setup The Dev, Stage and Prod Environments
+- Use the userdata: https://github.com/awanmbandi/gcp-realworld-cicd-pipeline-project/blob/maven-nexus-sonarqube-jenkins-install/archive/ansible/configure-ansible-client-install-tomcat.sh
+
+### B) Setup Ansible in Jenkins Instance (Instance 1) 🡪 For deployment
+* Login/SSH into the Ansible Control Node
+* Install and Configure Ansible and Tomcat
+```bash
+#!/bin/bash
+# ## Install Ansible (COMPLETED)
+# sudo yum install ansible -y
+# ansible --version
+
+# ## Configure Ansible friendly environment (COMPLETED)
+sudo userdel ansible
+sudo useradd ansible -m
+# sudo sh -c 'echo ansible:ansibleadmin | chpasswd'
+# sudo sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
+# sudo sed -i "s/.*#PermitRootLogin yes/PermitRootLogin yes/g" /etc/ssh/sshd_config
+# sudo service sshd restart
+# sudo echo "ansible ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+## Install Tomcat (NOT NOT COMPLETED)
+sudo yum install tomcat -y
+sudo systemctl enable tomcat
+sudo systemctl start tomcat
+sudo systemctl status tomcat
+
+## Wget (NOT NOT COMPLETED)
+sudo yum install wget -y
+```
+
+### Navigate 
+### Edit Ansible Config Files
+```bash
+sudo vi /etc/ansible/ansible.cfg ### (uncomment host_key_checking = False)
+```
+```yaml
+[defaults]
+host_key_checking = False
+```
+
+### Edit The Ansible Hosts Inventory File
+```bash
+sudo bash -c 'cat << EOF >> /etc/ansible/hosts
+[dev]
+DEV_VM_IP ansible_user=ansible ansible_password=ansibleadmin
+
+[stage]
+STAGE_VM_IP ansible_user=ansible ansible_password=ansibleadmin
+
+[prod]
+PROD_VM_IP ansible_user=ansible ansible_password=ansibleadmin
+EOF'
+```
+
+### MUST LOGIN As The USER ANSIBLE
+```bash
+ssh ansible@JENKINS_SERVER_EXTERNAL_IP
+## Password is "ansibleadmin"
+``` 
+
+### Create an ssh key in the master server and copy it to node servers This will create a .ssh folder (/home/ansadm/.ssh). Hit enter all the way  through 
+```bash
+ssh-keygen -t rsa 
+```
+
+#### This will create a .ssh folder (/home/ansible/.ssh). Hit enter all the way  through 
+```bash
+chmod 700 /home/ansible/.ssh 
+```
+#### ssh-copy-id ansible@ip address of you ansible-node1 #ssh-copy-id ansible@ip address of you ansible-node2 
+```bash
+ssh-copy-id ansible@ip address of your dev
+ssh-copy-id ansible@ip address of your stage 
+ssh-copy-id ansible@ip address of your prod 
+## Now all three servers are configured, ansible control server can do ssh on both the servers 
+```
+#### Test Connectivity From Master to Clients
+- Now try to ssh to the client VM’s to confirm ansible will not be required to provide a password anymore.
+check connectivity of hosts is 
+
+### Run Pipeline Test
 
 ### Setup a CI Integration Between `GitHub` and `Jenkins`
 1. Navigate to your GitHub project repository
